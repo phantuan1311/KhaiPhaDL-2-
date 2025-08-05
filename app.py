@@ -109,7 +109,6 @@ with tabs[1]:
     numeric_data = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
     default_values = numeric_data.select_dtypes(include='number').mean().to_dict()
 
-    # Với biến hạng mục như AQI_Bucket nếu có thì gán giá trị trung bình đã mã hóa (VD: Good=1,...)
     categorical_columns = data.select_dtypes(include='object').columns.difference(["City"])
     for col in categorical_columns:
         try:
@@ -131,9 +130,14 @@ with tabs[1]:
         })
         pred_base.append(row)
 
-    pred_df = pd.DataFrame(pred_base)
+    pred_df_full = pd.DataFrame(pred_base)
     if model_features:
-        pred_df = pred_df[[col for col in model_features if col in pred_df.columns]]
+        missing_features = [f for f in model_features if f not in pred_df_full.columns]
+        for f in missing_features:
+            pred_df_full[f] = 0
+        pred_df = pred_df_full[model_features]
+    else:
+        pred_df = pred_df_full
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
@@ -163,9 +167,14 @@ with tabs[1]:
                 "PM10": custom_pm10,
                 "NO2": custom_no2
             })
-            input_df = pd.DataFrame([input_row])
+            input_df_full = pd.DataFrame([input_row])
             if model_features:
-                input_df = input_df[[col for col in model_features if col in input_df.columns]]
+                missing_features = [f for f in model_features if f not in input_df_full.columns]
+                for f in missing_features:
+                    input_df_full[f] = 0
+                input_df = input_df_full[model_features]
+            else:
+                input_df = input_df_full
             result = model.predict(input_df)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
