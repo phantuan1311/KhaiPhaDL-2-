@@ -94,37 +94,25 @@ with tabs[1]:
                               min_value=data["Date"].min().date(), 
                               max_value=data["Date"].max().date())
     city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
-
-    all_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else [
-        "City", "Day", "Month", "PM10", "NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
-    ]
+    pm10_value = st.number_input("🔸 PM10", min_value=0.0, value=100.0)
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
-    numeric_data = data.select_dtypes(include='number')
-    default_inputs = {}
+    avg_values = data[["NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene", "Toluene", "Xylene"]].mean().to_dict()
 
-    for feature in all_features:
-        if feature == "City":
-            default_inputs[feature] = city_mapping.get(city, 0)
-        elif feature == "Day":
-            default_inputs[feature] = pred_date.day
-        elif feature == "Month":
-            default_inputs[feature] = pred_date.month
-        elif feature in numeric_data.columns:
-            default_inputs[feature] = round(numeric_data[feature].mean(skipna=True), 2)
-        else:
-            default_inputs[feature] = 0
+    input_dict = {
+        "City": city_mapping.get(city, 0),
+        "Day": pred_date.day,
+        "Month": pred_date.month,
+        "PM10": pm10_value,
+        **avg_values
+    }
 
-    for feature in all_features:
-        if feature not in ["City", "Day", "Month"]:
-            default_inputs[feature] = st.number_input(f"🔸 {feature}", value=default_inputs[feature])
-
-    input_df = pd.DataFrame([{f: default_inputs[f] for f in all_features}])
+    input_df = pd.DataFrame([input_dict])
 
     if st.button("🧲 Dự đoán PM2.5"):
         try:
             result = model.predict(input_df)
-            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
+            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³** (AQI Bucket: Satisfactory)")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
