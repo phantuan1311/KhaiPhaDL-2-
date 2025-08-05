@@ -99,12 +99,16 @@ with tabs[1]:
                               min_value=data["Date"].min().date(), 
                               max_value=data["Date"].max().date())
     city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
-    pm10 = st.number_input("🔸 Giá trị PM10", value=100.0)
-    no2 = st.number_input("🔸 Giá trị NO2", value=40.0)
+
+    # Trung bình các giá trị còn lại (PM10, NO2)
+    default_pm10 = round(data["PM10"].mean(), 2)
+    default_no2 = round(data["NO2"].mean(), 2)
+
+    pm10 = st.number_input("🔸 Giá trị PM10", value=default_pm10)
+    no2 = st.number_input("🔸 Giá trị NO2", value=default_no2)
 
     city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
 
-    # Tạo input cho dự đoán
     input_df = pd.DataFrame([{
         "City": city_mapping[city],
         "Day": pred_date.day,
