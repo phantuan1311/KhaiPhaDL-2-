@@ -111,7 +111,7 @@ with col2:
     pm10 = st.number_input("Giá trị PM10", value=100.0)
     no2 = st.number_input("Giá trị NO2", value=40.0)
 
-# Xử lý input
+# Chuẩn bị input
 pred_df = pd.DataFrame({
     "City": [pred_city],
     "Day": [pred_date.day],
@@ -120,13 +120,14 @@ pred_df = pd.DataFrame({
     "NO2": [no2]
 })
 
-# Ánh xạ city nếu mô hình đã encode
-if "City" in model.feature_names_in_:
-    pred_df["City"] = pred_df["City"].astype("category").cat.codes
+# Mã hoá City đúng như khi huấn luyện
+pred_df["City"] = pred_df["City"].astype("category").cat.codes
 
 # Dự đoán
 if st.button("🧮 Dự đoán PM2.5"):
     result = model.predict(pred_df)
     st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
+
+
 
 
