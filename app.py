@@ -105,17 +105,19 @@ with tabs[1]:
     city_list = list(city_mapping.values())
     city_names = list(city_mapping.keys())
 
-    pred_base = pd.DataFrame({
-        "City": city_list,
-        "Day": [pred_date.day] * len(city_list),
-        "Month": [pred_date.month] * len(city_list),
-        "PM10": [pm10] * len(city_list),
-        "NO2": [no2] * len(city_list)
-    })
+    pred_base_full = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore").copy()
+    feature_cols = pred_base_full.columns.tolist()
+
+    pred_base = pd.DataFrame({col: [0]*len(city_list) for col in feature_cols})
+    pred_base["City"] = city_list
+    pred_base["Day"] = pred_date.day
+    pred_base["Month"] = pred_date.month
+    pred_base["PM10"] = pm10
+    pred_base["NO2"] = no2
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
-            results = model.predict(pred_base.values)
+            results = model.predict(pred_base)
             for city, val in zip(city_names, results):
                 st.success(f"✅ {city}: {round(float(val), 2)} µg/m³")
         except Exception as e:
@@ -133,14 +135,14 @@ with tabs[1]:
 
     if st.button("🧮 Dự đoán PM2.5 với tham số tùy chọn"):
         try:
-            input_df = pd.DataFrame([{
-                "City": city_mapping[custom_city],
-                "Day": custom_day,
-                "Month": custom_month,
-                "PM10": custom_pm10,
-                "NO2": custom_no2
-            }])
-            result = model.predict(input_df.values)
+            input_row = {col: 0 for col in feature_cols}
+            input_row["City"] = city_mapping[custom_city]
+            input_row["Day"] = custom_day
+            input_row["Month"] = custom_month
+            input_row["PM10"] = custom_pm10
+            input_row["NO2"] = custom_no2
+            input_df = pd.DataFrame([input_row])
+            result = model.predict(input_df)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
