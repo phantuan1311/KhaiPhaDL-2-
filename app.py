@@ -14,7 +14,7 @@ def load_data():
 
 @st.cache_resource
 def load_model():
-    return joblib.load("pm25_model.pkl")  # Đổi tên đúng nếu cần
+    return joblib.load("model_pm25.pkl")  # Đổi tên đúng nếu cần
 
 df = load_data()
 model = load_model()
@@ -88,3 +88,4 @@ try:
     st.success(f"✅ Dự đoán PM2.5: {round(result[0], 2)} µg/m³")
 except Exception as e:
     st.error(f"❌ Lỗi khi dự đoán: {e}")
+
