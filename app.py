@@ -123,7 +123,12 @@ with tabs[1]:
 
     if st.button("🧲 Dự đoán PM2.5"):
         try:
+            st.write("🛠️ Cột dữ liệu đầu vào:")
+            st.write(input_df.dtypes)
+            st.dataframe(input_df)
+
             result = model.predict(input_df)
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
+
