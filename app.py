@@ -22,6 +22,7 @@ def load_model():
     return joblib.load("model_pm25.pkl")
 
 model = load_model()
+model_features = model.feature_names_in_ if hasattr(model, "feature_names_in_") else []
 
 # === Giao diện ===
 tabs = st.tabs(["📊 Phân tích dữ liệu", "🔮 Dự đoán PM2.5"])
@@ -105,9 +106,8 @@ with tabs[1]:
     city_list = list(city_mapping.values())
     city_names = list(city_mapping.keys())
 
-    pred_base_full = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore").copy()
-    feature_cols = pred_base_full.columns.tolist()
-    default_values = pred_base_full.mean(numeric_only=True).to_dict()
+    numeric_data = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
+    default_values = numeric_data.select_dtypes(include='number').mean().to_dict()
 
     pred_base = []
     for city_id in city_list:
@@ -121,7 +121,9 @@ with tabs[1]:
         })
         pred_base.append(row)
 
-    pred_df = pd.DataFrame(pred_base)[feature_cols]
+    pred_df = pd.DataFrame(pred_base)
+    if model_features:
+        pred_df = pred_df[model_features]
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
@@ -151,7 +153,9 @@ with tabs[1]:
                 "PM10": custom_pm10,
                 "NO2": custom_no2
             })
-            input_df = pd.DataFrame([input_row])[feature_cols]
+            input_df = pd.DataFrame([input_row])
+            if model_features:
+                input_df = input_df[model_features]
             result = model.predict(input_df)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
