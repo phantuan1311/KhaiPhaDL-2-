@@ -19,14 +19,16 @@ data = load_data()
 # === Load model ===
 @st.cache_resource
 def load_model():
+    st.write("📌 Các cột mô hình yêu cầu:")
+    try:
+        st.write(model.feature_names_in_)
+    except:
+        st.write("Mô hình không có thuộc tính feature_names_in_")
+
+    
     return joblib.load("model_pm25.pkl")
 
 model = load_model()
-st.write("📌 Các cột mô hình yêu cầu:")
-try:
-    st.write(model.feature_names_in_)
-except:
-    st.write("Mô hình không có thuộc tính feature_names_in_")
 
 
 # === Giao diện ===
@@ -133,5 +135,6 @@ with tabs[1]:
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
+
 
 
