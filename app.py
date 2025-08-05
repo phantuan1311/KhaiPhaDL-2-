@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
-st.title("🌫️ Phân tích chất lượng không khí (PM2.5 và các chất khác)")
+st.title("🌫️ Phân tích chất lượng không khí (Ấn Độ - 2018 đến 2020)")
 
 # Load dữ liệu
 @st.cache_data
@@ -14,37 +14,36 @@ def load_data():
 
 data = load_data()
 
-# Sidebar
-st.sidebar.header("🎛️ Bộ lọc")
-
+# Sidebar: Chọn thành phố, thời gian, biến số
+st.sidebar.header("🎛️ Bộ lọc dữ liệu")
 cities = st.sidebar.multiselect("Chọn thành phố", data["City"].unique(), default=data["City"].unique())
 date_range = st.sidebar.date_input("Khoảng thời gian", [data["Date"].min(), data["Date"].max()])
-pollutant = st.sidebar.selectbox("Chọn biến ô nhiễm", 
-                                  options=[col for col in data.columns if col not in ['Date', 'City']])
+
+# Danh sách biến số loại trừ AQI_Bucket
+numeric_cols = data.select_dtypes(include='number').columns.tolist()
+valid_cols = [col for col in numeric_cols if col not in ['AQI']]  # giữ lại PM2.5, PM10, NO2,...
+pollutant = st.sidebar.selectbox("Chọn biến cần phân tích", options=valid_cols)
 
 # Lọc dữ liệu
 filtered = data[data["City"].isin(cities)]
 filtered = filtered[(filtered["Date"] >= pd.to_datetime(date_range[0])) & 
                     (filtered["Date"] <= pd.to_datetime(date_range[1]))]
 
-# Cảnh báo nếu dữ liệu trống
+# Kiểm tra dữ liệu rỗng
 if filtered.empty:
     st.warning("⚠️ Không có dữ liệu trong khoảng bạn chọn.")
     st.stop()
 
-# Block đầu cuối của dữ liệu
-st.markdown("### 🧾 Thống kê đầu và cuối của biến đã chọn")
+# Thống kê đầu/cuối khoảng
+st.markdown("### 📌 Thống kê giá trị đầu/cuối khoảng thời gian")
 for city in cities:
     city_data = filtered[filtered["City"] == city].sort_values("Date")
     if not city_data.empty:
-        st.markdown(f"**{city}**")
         col1, col2 = st.columns(2)
         with col1:
-            st.metric(label=f"🔽 Đầu khoảng: {city_data['Date'].iloc[0].date()}", 
-                      value=city_data[pollutant].iloc[0])
+            st.metric(label=f"{city} - Đầu khoảng", value=round(city_data[pollutant].iloc[0], 2))
         with col2:
-            st.metric(label=f"🔼 Cuối khoảng: {city_data['Date'].iloc[-1].date()}", 
-                      value=city_data[pollutant].iloc[-1])
+            st.metric(label=f"{city} - Cuối khoảng", value=round(city_data[pollutant].iloc[-1], 2))
 
 # Biểu đồ theo thời gian
 st.subheader(f"📈 Biến '{pollutant}' theo thời gian")
@@ -79,5 +78,11 @@ st.pyplot(fig2)
 st.subheader(f"📦 So sánh phân bố '{pollutant}' giữa các thành phố")
 st.dataframe(filtered.groupby("City")[pollutant].describe().round(2))
 
-# Tải dữ liệu đã lọc
-st.download_button("📥 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_pm_data.csv")
+# Phân tích AQI_Bucket nếu tồn tại
+if "AQI_Bucket" in filtered.columns:
+    st.subheader("🔍 Tần suất các mức AQI_Bucket")
+    aqi_counts = filtered["AQI_Bucket"].value_counts()
+    st.bar_chart(aqi_counts)
+
+# Nút tải dữ liệu
+st.download_button("📥 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
