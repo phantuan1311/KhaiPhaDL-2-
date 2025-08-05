@@ -96,36 +96,34 @@ with tabs[1]:
     city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
     pm10_value = st.number_input("🔸 PM10", min_value=0.0, value=100.0)
 
-    # Thành phố → số
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
     city_encoded = city_mapping.get(city, 0)
 
-    # Danh sách feature đúng mà mô hình đã huấn luyện (phải đảm bảo khớp khi train)
-    features = ['City', 'Day', 'Month', 'PM10', 'NO', 'NO2', 'NOx',
-                'NH3', 'CO', 'SO2', 'O3', 'Benzene']
+    # Danh sách cột kỳ vọng
+    all_features = ['City', 'Day', 'Month', 'PM10', 'NO', 'NO2', 'NOx',
+                    'NH3', 'CO', 'SO2', 'O3', 'Benzene']
 
-    # Tạo dict trung bình cho các feature (chỉ lấy trung bình từ đúng các cột cần)
-    safe_data = data[features].copy()  # tránh lấy nhầm cột string như 'AQI_Bucket'
-    avg_dict = safe_data.mean(numeric_only=True).to_dict()
+    # Chỉ lấy các cột thực sự có mặt trong dữ liệu
+    available_features = [col for col in all_features if col in data.columns]
 
-    # Tạo input đầu vào
+    # Tạo dict trung bình cho các cột có sẵn
+    avg_dict = data[available_features].mean(numeric_only=True).to_dict()
+
+    # Tạo input
     input_dict = {
         'City': city_encoded,
         'Day': pred_date.day,
         'Month': pred_date.month,
         'PM10': pm10_value,
-        'NO': avg_dict.get('NO', 0),
-        'NO2': avg_dict.get('NO2', 0),
-        'NOx': avg_dict.get('NOx', 0),
-        'NH3': avg_dict.get('NH3', 0),
-        'CO': avg_dict.get('CO', 0),
-        'SO2': avg_dict.get('SO2', 0),
-        'O3': avg_dict.get('O3', 0),
-        'Benzene': avg_dict.get('Benzene', 0)
     }
 
-    # Đảm bảo đúng định dạng
-    input_df = pd.DataFrame([input_dict])[features]
+    # Thêm các cột còn lại nếu có mặt trong dữ liệu
+    for col in available_features:
+        if col not in input_dict:
+            input_dict[col] = avg_dict.get(col, 0)
+
+    # Chuyển thành dataframe và sắp xếp đúng thứ tự
+    input_df = pd.DataFrame([input_dict])[available_features]
 
     st.markdown("📋 Dữ liệu đưa vào mô hình:")
     st.dataframe(input_df)
