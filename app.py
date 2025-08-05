@@ -114,7 +114,8 @@ with tabs[1]:
         "SO2": avg_dict.get("SO2", 0),
         "O3": avg_dict.get("O3", 0),
         "Benzene": avg_dict.get("Benzene", 0),
-        "Toluene": avg_dict.get("Toluene", 0),
+        #"Toluene": avg_dict.get("Toluene", 0),
+        #"Xylene": avg_dict.get("Xylene", 0),
     }
 
     input_df = pd.DataFrame([input_dict])
@@ -125,5 +126,3 @@ with tabs[1]:
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³** (AQI Bucket: Satisfactory)")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
-
-
