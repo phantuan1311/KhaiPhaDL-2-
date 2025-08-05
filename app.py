@@ -28,7 +28,7 @@ tabs = st.tabs(["📊 Phân tích dữ liệu", "🔮 Dự đoán PM2.5"])
 
 # ======================== TAB 1: PHÂN TÍCH ========================
 with tabs[0]:
-    st.sidebar.header("🎛️ Bộ lọc dữ liệu")
+    st.sidebar.header("🎧 Bộ lọc dữ liệu")
     cities = st.sidebar.multiselect("Chọn thành phố", data["City"].unique(), default=data["City"].unique())
     date_range = st.sidebar.date_input("Khoảng thời gian", [data["Date"].min(), data["Date"].max()])
 
@@ -98,7 +98,7 @@ with tabs[1]:
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
-    # Tạo dict trung bình cho tất cả feature cần thiết (12 features cho LogisticRegression)
+    # Tạo dict trung bình cho 12 features huấn luyện LogisticRegression
     avg_dict = data.mean(numeric_only=True).to_dict()
 
     input_dict = {
@@ -114,8 +114,6 @@ with tabs[1]:
         "SO2": avg_dict.get("SO2", 0),
         "O3": avg_dict.get("O3", 0),
         "Benzene": avg_dict.get("Benzene", 0),
-        "Toluene": avg_dict.get("Toluene", 0),
-        "Xylene": avg_dict.get("Xylene", 0),
     }
 
     input_df = pd.DataFrame([input_dict])
