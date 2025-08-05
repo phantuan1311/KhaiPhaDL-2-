@@ -84,12 +84,7 @@ with tabs[0]:
     st.subheader(f"📦 So sánh phân bố '{pollutant}' giữa các thành phố")
     st.dataframe(filtered.groupby("City")[pollutant].describe().round(2))
 
-    if "AQI_Bucket" in filtered.columns:
-        st.subheader("🔍 Tần suất các mức AQI_Bucket")
-        aqi_counts = filtered["AQI_Bucket"].value_counts()
-        st.bar_chart(aqi_counts)
-
-    st.download_button("📥 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
+    st.download_button("📅 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
 
 # ======================== TAB 2: DỰ ĐOÁN ========================
 with tabs[1]:
@@ -98,19 +93,13 @@ with tabs[1]:
     pred_date = st.date_input("📅 Chọn ngày dự đoán", value=date(2020, 1, 1), 
                               min_value=data["Date"].min().date(), 
                               max_value=data["Date"].max().date())
-    city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
+    city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
 
     all_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else [
         "City", "Day", "Month", "PM10", "NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
     ]
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
-
-    # Map AQI_Bucket thành số
-    bucket_mapping = {"Good": 1, "Satisfactory": 2, "Moderate": 3, "Poor": 4, "Very Poor": 5, "Severe": 6}
-    data_numeric = data.copy()
-    if "AQI_Bucket" in data_numeric.columns:
-        data_numeric["AQI_Bucket"] = data_numeric["AQI_Bucket"].map(bucket_mapping)
 
     default_inputs = {}
     for feature in all_features:
@@ -120,8 +109,11 @@ with tabs[1]:
             default_inputs[feature] = pred_date.day
         elif feature == "Month":
             default_inputs[feature] = pred_date.month
-        elif feature in data_numeric.columns:
-            default_inputs[feature] = round(data_numeric[feature].mean(), 2)
+        elif feature in data.columns:
+            try:
+                default_inputs[feature] = round(pd.to_numeric(data[feature], errors='coerce').mean(), 2)
+            except:
+                default_inputs[feature] = 0
         else:
             default_inputs[feature] = 0
 
