@@ -100,36 +100,30 @@ with tabs[1]:
                               max_value=data["Date"].max().date())
     city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
 
-    all_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else ["City", "Day", "Month", "PM10", "NO2"]
+    all_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else [
+        "City", "Day", "Month", "PM10", "NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
+    ]
 
-    # Xử lý các giá trị mặc định theo từng loại biến
+    # Tính trung bình các đặc trưng
     default_inputs = {}
     for feature in all_features:
         if feature in data.columns:
             if pd.api.types.is_numeric_dtype(data[feature]):
                 default_inputs[feature] = data[feature].mean()
             else:
-                if feature == "AQI_Bucket":
-                    bucket_map = {"Good": 1, "Satisfactory": 2, "Moderate": 3, "Poor": 4, "Very Poor": 5, "Severe": 6}
-                    mapped = data[feature].map(bucket_map)
-                    default_inputs[feature] = mapped.mean()
-                else:
-                    default_inputs[feature] = 0
+                default_inputs[feature] = 0
         else:
             default_inputs[feature] = 0
 
-    # Giao diện nhập các feature người dùng có thể thay đổi
-    for feature in ["PM10", "NO2"]:
-        if feature in default_inputs:
+    for feature in all_features:
+        if feature not in ["City", "Day", "Month"]:
             default_inputs[feature] = st.number_input(f"🔸 {feature}", value=round(default_inputs[feature], 2))
 
-    # Gán thông tin thành phố và ngày tháng
-    city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
+    city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
     default_inputs["City"] = city_mapping.get(city, 0)
     default_inputs["Day"] = pred_date.day
     default_inputs["Month"] = pred_date.month
 
-    # Tạo DataFrame đầu vào
     input_df = pd.DataFrame([{f: round(v) if isinstance(v, float) else v for f, v in default_inputs.items()}])
 
     if st.button("🧮 Dự đoán PM2.5"):
