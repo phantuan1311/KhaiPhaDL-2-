@@ -1,91 +1,3 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import joblib
-from datetime import date
-
-st.set_page_config(layout="wide")
-st.title("🌫️ Phân tích & Dự đoán chất lượng không khí (Ấn Độ - 2018 đến 2020)")
-
-# === Load dữ liệu ===
-@st.cache_data
-def load_data():
-    df = pd.read_csv("filtered_city_data.csv")
-    df["Date"] = pd.to_datetime(df["Date"])
-    return df
-
-data = load_data()
-
-# === Load model ===
-@st.cache_resource
-def load_model():
-    return joblib.load("model_pm25.pkl")
-
-model = load_model()
-
-# === Giao diện ===
-tabs = st.tabs(["📊 Phân tích dữ liệu", "🔮 Dự đoán PM2.5"])
-
-# ======================== TAB 1: PHÂN TÍCH ========================
-with tabs[0]:
-    st.sidebar.header("🎧 Bộ lọc dữ liệu")
-    cities = st.sidebar.multiselect("Chọn thành phố", data["City"].unique(), default=data["City"].unique())
-    date_range = st.sidebar.date_input("Khoảng thời gian", [data["Date"].min(), data["Date"].max()])
-
-    numeric_cols = data.select_dtypes(include='number').columns.tolist()
-    valid_cols = [col for col in numeric_cols if col not in ['AQI']]
-    pollutant = st.sidebar.selectbox("Chọn biến cần phân tích", options=valid_cols)
-
-    filtered = data[data["City"].isin(cities)]
-    filtered = filtered[(filtered["Date"] >= pd.to_datetime(date_range[0])) & 
-                        (filtered["Date"] <= pd.to_datetime(date_range[1]))]
-
-    if filtered.empty:
-        st.warning("⚠️ Không có dữ liệu trong khoảng bạn chọn.")
-        st.stop()
-
-    st.markdown("### 📌 Thống kê giá trị đầu/cuối khoảng thời gian")
-    for city in cities:
-        city_data = filtered[filtered["City"] == city].sort_values("Date")
-        if not city_data.empty:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(label=f"{city} - Đầu khoảng", value=round(city_data[pollutant].iloc[0], 2))
-            with col2:
-                st.metric(label=f"{city} - Cuối khoảng", value=round(city_data[pollutant].iloc[-1], 2))
-
-    st.subheader(f"📈 Biến '{pollutant}' theo thời gian")
-    fig1, ax1 = plt.subplots(figsize=(12, 5))
-    for city in cities:
-        city_data = filtered[filtered["City"] == city]
-        ax1.plot(city_data["Date"], city_data[pollutant], label=city)
-    ax1.set_xlabel("Ngày")
-    ax1.set_ylabel(pollutant)
-    ax1.legend()
-    ax1.grid(True)
-    st.pyplot(fig1)
-
-    st.subheader(f"📊 Trung bình '{pollutant}' theo tháng")
-    filtered["Month"] = filtered["Date"].dt.to_period("M")
-    monthly_avg = filtered.groupby(["Month", "City"])[pollutant].mean().reset_index()
-    monthly_avg["Month"] = monthly_avg["Month"].astype(str)
-
-    fig2, ax2 = plt.subplots(figsize=(12, 5))
-    for city in cities:
-        subset = monthly_avg[monthly_avg["City"] == city].reset_index(drop=True)
-        ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
-        ax2.set_xticks(range(0, len(subset), 2))
-        ax2.set_xticklabels(subset["Month"][::2], rotation=45)
-    ax2.set_ylabel(pollutant)
-    ax2.legend()
-    ax2.grid(True)
-    st.pyplot(fig2)
-
-    st.subheader(f"📦 So sánh phân bố '{pollutant}' giữa các thành phố")
-    st.dataframe(filtered.groupby("City")[pollutant].describe().round(2))
-
-    st.download_button("📅 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
-
 # ======================== TAB 2: DỰ ĐOÁN ========================
 with tabs[1]:
     st.subheader("🔮 Dự đoán nồng độ PM2.5")
@@ -96,11 +8,13 @@ with tabs[1]:
     city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
     pm10_value = st.number_input("🔸 PM10", min_value=0.0, value=100.0)
 
+    # Encode tên thành phố thành số
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
-    # Tạo dict trung bình cho 12 features huấn luyện LogisticRegression
-    avg_dict = data.mean(numeric_only=True).to_dict()
+    # Trung bình các cột số để điền vào những biến còn lại
+    avg_dict = data.select_dtypes(include='number').mean().to_dict()
 
+    # Tạo dict đầu vào (chỉ chứa các feature mà model cần)
     input_dict = {
         "City": city_mapping.get(city, 0),
         "Day": pred_date.day,
@@ -114,15 +28,23 @@ with tabs[1]:
         "SO2": avg_dict.get("SO2", 0),
         "O3": avg_dict.get("O3", 0),
         "Benzene": avg_dict.get("Benzene", 0),
-        #"Toluene": avg_dict.get("Toluene", 0),
-        #"Xylene": avg_dict.get("Xylene", 0),
+        # ❌ KHÔNG thêm 'Toluene' hoặc 'Xylene' nếu mô hình không cần
     }
 
     input_df = pd.DataFrame([input_dict])
 
+    # Nếu model hỗ trợ, chỉ giữ đúng cột mà model đã học
+    try:
+        input_df = input_df[model.feature_names_in_]
+    except:
+        pass  # nếu không có feature_names_in_, dùng nguyên input_dict ở trên
+
+    st.markdown("📋 Dữ liệu đưa vào mô hình:")
+    st.dataframe(input_df)
+
     if st.button("🧲 Dự đoán PM2.5"):
         try:
             result = model.predict(input_df)
-            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³** (AQI Bucket: Satisfactory)")
+            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
