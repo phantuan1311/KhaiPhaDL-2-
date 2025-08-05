@@ -87,50 +87,25 @@ with tabs[0]:
     st.download_button("📅 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
 
 # ======================== TAB 2: DỰ ĐOÁN ========================
-with tabs[1]:
-    st.subheader("🔮 Dự đoán nồng độ PM2.5")
+# Danh sách feature đúng theo mô hình huấn luyện
+required_features = ['City', 'Day', 'Month', 'PM10', 'NO', 'NO2', 'NOx',
+                     'NH3', 'CO', 'SO2', 'O3', 'Benzene']
 
-    pred_date = st.date_input("📅 Chọn ngày dự đoán", value=date(2020, 1, 1), 
-                              min_value=data["Date"].min().date(), 
-                              max_value=data["Date"].max().date())
-    city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
-    pm10_value = st.number_input("🔸 PM10", min_value=0.0, value=100.0)
+# Tạo dict trung bình cho các feature số
+avg_dict = data.mean(numeric_only=True).to_dict()
 
-    city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
-    city_encoded = city_mapping.get(city, 0)
+# Tạo input đầu vào
+input_dict = {
+    'City': city_mapping.get(city, 0),
+    'Day': pred_date.day,
+    'Month': pred_date.month,
+    'PM10': pm10_value,
+}
 
-    # Danh sách cột kỳ vọng
-    all_features = ['City', 'Day', 'Month', 'PM10', 'NO', 'NO2', 'NOx',
-                    'NH3', 'CO', 'SO2', 'O3', 'Benzene']
+# Bổ sung các feature còn lại với giá trị trung bình
+for feat in required_features:
+    if feat not in input_dict:
+        input_dict[feat] = avg_dict.get(feat, 0)
 
-    # Chỉ lấy các cột thực sự có mặt trong dữ liệu
-    available_features = [col for col in all_features if col in data.columns]
-
-    # Tạo dict trung bình cho các cột có sẵn
-    avg_dict = data[available_features].mean(numeric_only=True).to_dict()
-
-    # Tạo input
-    input_dict = {
-        'City': city_encoded,
-        'Day': pred_date.day,
-        'Month': pred_date.month,
-        'PM10': pm10_value,
-    }
-
-    # Thêm các cột còn lại nếu có mặt trong dữ liệu
-    for col in available_features:
-        if col not in input_dict:
-            input_dict[col] = avg_dict.get(col, 0)
-
-    # Chuyển thành dataframe và sắp xếp đúng thứ tự
-    input_df = pd.DataFrame([input_dict])[available_features]
-
-    st.markdown("📋 Dữ liệu đưa vào mô hình:")
-    st.dataframe(input_df)
-
-    if st.button("🧲 Dự đoán PM2.5"):
-        try:
-            result = model.predict(input_df)
-            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
-        except Exception as e:
-            st.error(f"❌ Lỗi khi dự đoán: {e}")
+# Chuyển thành DataFrame, đảm bảo thứ tự cột khớp
+input_df = pd.DataFrame([input_dict])[required_features]
