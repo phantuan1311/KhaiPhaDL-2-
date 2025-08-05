@@ -98,82 +98,24 @@ with tabs[1]:
     pred_date = st.date_input("📅 Chọn ngày dự đoán", value=date(2020, 1, 1), 
                               min_value=data["Date"].min().date(), 
                               max_value=data["Date"].max().date())
-    pm10 = st.number_input("Giá trị PM10", value=100.0)
-    no2 = st.number_input("Giá trị NO2", value=40.0)
+    city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
+    pm10 = st.number_input("🔸 Giá trị PM10", value=100.0)
+    no2 = st.number_input("🔸 Giá trị NO2", value=40.0)
 
     city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
-    city_list = list(city_mapping.values())
-    city_names = list(city_mapping.keys())
 
-    default_df = data.copy()
-    default_df = default_df.drop(columns=["Date", "PM2.5", "AQI"], errors="ignore")
+    # Tạo input cho dự đoán
+    input_df = pd.DataFrame([{
+        "City": city_mapping[city],
+        "Day": pred_date.day,
+        "Month": pred_date.month,
+        "PM10": pm10,
+        "NO2": no2
+    }])
 
-    bucket_map = {
-        "Good": 1,
-        "Moderate": 2,
-        "Poor": 3,
-        "Satisfactory": 4,
-        "Severe": 5,
-        "Very Poor": 6
-    }
-    if "AQI_Bucket" in default_df.columns:
-        default_df["AQI_Bucket"] = default_df["AQI_Bucket"].map(bucket_map)
-
-    numeric_data = default_df.select_dtypes(include='number')
-    default_values = numeric_data.mean().to_dict()
-
-    required_features = [
-        "City", "Day", "Month", "PM10", "NO2", "NO", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
-    ]
-
-    pred_base = []
-    for city_id in city_list:
-        row = {
-            "City": city_id,
-            "Day": pred_date.day,
-            "Month": pred_date.month,
-            "PM10": pm10,
-            "NO2": no2,
-        }
-        for feat in required_features:
-            if feat not in row:
-                row[feat] = default_values.get(feat, 0)
-        pred_base.append(row)
-
-    pred_df = pd.DataFrame(pred_base)[required_features]
-
-    if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
+    if st.button("🧮 Dự đoán PM2.5"):
         try:
-            results = model.predict(pred_df.values)
-            for city, val in zip(city_names, results):
-                st.success(f"✅ {city}: {round(float(val), 2)} µg/m³")
-        except Exception as e:
-            st.error(f"❌ Lỗi khi dự đoán: {e}")
-
-    st.markdown("---")
-    st.subheader("🧪 Dự đoán theo tham số tùy chọn")
-    st.info("🔧 Nhập PM10, NO2, và thời gian để dự đoán")
-
-    custom_pm10 = st.number_input("PM10", value=pm10)
-    custom_no2 = st.number_input("NO2", value=no2)
-    custom_day = st.number_input("Day", value=pred_date.day, min_value=1, max_value=31)
-    custom_month = st.number_input("Month", value=pred_date.month, min_value=1, max_value=12)
-    custom_city = st.selectbox("Thành phố", options=city_names)
-
-    if st.button("🧮 Dự đoán PM2.5 với tham số tùy chọn"):
-        try:
-            row = {
-                "City": city_mapping[custom_city],
-                "Day": custom_day,
-                "Month": custom_month,
-                "PM10": custom_pm10,
-                "NO2": custom_no2
-            }
-            for feat in required_features:
-                if feat not in row:
-                    row[feat] = default_values.get(feat, 0)
-            input_df = pd.DataFrame([row])[required_features]
-            result = model.predict(input_df.values)
-            st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
+            result = model.predict(input_df)
+            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
