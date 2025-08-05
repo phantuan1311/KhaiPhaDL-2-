@@ -122,20 +122,25 @@ with tabs[1]:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
 
     st.markdown("---")
-    st.subheader("🧪 Dự đoán với đầy đủ đặc trưng (12 biến)")
-    st.info("🔧 Nhập các thông số để mô hình dự đoán PM2.5")
+    st.subheader("🧪 Dự đoán theo tham số tùy chọn")
+    st.info("🔧 Nhập PM10, NO2, và thời gian để dự đoán")
 
-    inputs = {}
-    full_features = ["PM10", "NO2", "NO", "NOx", "NH3", "CO", "SO2", "O3", "Benzene", "Toluene", "Xylene", "Month"]
-    for feat in full_features:
-        default_val = pred_date.month if feat == "Month" else 0.0
-        inputs[feat] = st.number_input(f"{feat}", value=float(default_val))
+    custom_pm10 = st.number_input("PM10", value=pm10)
+    custom_no2 = st.number_input("NO2", value=no2)
+    custom_day = st.number_input("Day", value=pred_date.day, min_value=1, max_value=31)
+    custom_month = st.number_input("Month", value=pred_date.month, min_value=1, max_value=12)
+    custom_city = st.selectbox("Thành phố", options=city_names)
 
-    pred_df_full = pd.DataFrame([inputs])
-
-    if st.button("🧮 Dự đoán PM2.5 (đầy đủ đặc trưng)"):
+    if st.button("🧮 Dự đoán PM2.5 với tham số tùy chọn"):
         try:
-            result = model.predict(pred_df_full.values)
-            st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
+            input_df = pd.DataFrame([{
+                "City": city_mapping[custom_city],
+                "Day": custom_day,
+                "Month": custom_month,
+                "PM10": custom_pm10,
+                "NO2": custom_no2
+            }])
+            result = model.predict(input_df.values)
+            st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
