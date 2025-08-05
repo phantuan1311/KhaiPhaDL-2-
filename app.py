@@ -100,22 +100,22 @@ with tabs[1]:
                               max_value=data["Date"].max().date())
     city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
 
-    # Trung bình các biến đầu vào
-    input_dict = {
-        'PM10': round(data['PM10'].mean(), 2),
-        'NO2': round(data['NO2'].mean(), 2)
-    }
+    # Lấy toàn bộ trung bình các biến đầu vào của model
+    all_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else ["City", "Day", "Month", "PM10", "NO2"]
+    default_inputs = {feature: data[feature].mean() if feature in data.columns else 0 for feature in all_features}
 
-    for feature in input_dict:
-        input_dict[feature] = st.number_input(f"🔸 {feature}", value=input_dict[feature])
+    # Giao diện nhập các feature quan trọng
+    for feature in ["PM10", "NO2"]:
+        if feature in default_inputs:
+            default_inputs[feature] = st.number_input(f"🔸 {feature}", value=round(default_inputs[feature], 2))
 
-    # Thành phố, ngày tháng
+    # Cập nhật thêm thông tin ngày tháng và thành phố
     city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
-    input_dict['City'] = city_mapping[city]
-    input_dict['Day'] = pred_date.day
-    input_dict['Month'] = pred_date.month
+    default_inputs["City"] = city_mapping.get(city, 0)
+    default_inputs["Day"] = pred_date.day
+    default_inputs["Month"] = pred_date.month
 
-    input_df = pd.DataFrame([input_dict])
+    input_df = pd.DataFrame([{f: round(v) if isinstance(v, float) else v for f, v in default_inputs.items()}])
 
     if st.button("🧮 Dự đoán PM2.5"):
         try:
