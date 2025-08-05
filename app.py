@@ -101,7 +101,9 @@ with tabs[1]:
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
+    numeric_data = data.select_dtypes(include='number')
     default_inputs = {}
+
     for feature in all_features:
         if feature == "City":
             default_inputs[feature] = city_mapping.get(city, 0)
@@ -109,11 +111,8 @@ with tabs[1]:
             default_inputs[feature] = pred_date.day
         elif feature == "Month":
             default_inputs[feature] = pred_date.month
-        elif feature in data.columns:
-            try:
-                default_inputs[feature] = round(pd.to_numeric(data[feature], errors='coerce').mean(), 2)
-            except:
-                default_inputs[feature] = 0
+        elif feature in numeric_data.columns:
+            default_inputs[feature] = round(numeric_data[feature].mean(skipna=True), 2)
         else:
             default_inputs[feature] = 0
 
@@ -123,7 +122,7 @@ with tabs[1]:
 
     input_df = pd.DataFrame([{f: default_inputs[f] for f in all_features}])
 
-    if st.button("🧮 Dự đoán PM2.5"):
+    if st.button("🧲 Dự đoán PM2.5"):
         try:
             result = model.predict(input_df)
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
