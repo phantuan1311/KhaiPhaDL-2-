@@ -106,11 +106,22 @@ with tabs[1]:
     city_names = list(city_mapping.keys())
 
     default_df = data.copy()
-    default_df = default_df.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
+    default_df = default_df.drop(columns=["Date", "PM2.5", "AQI"], errors="ignore")
+
+    bucket_map = {
+        "Good": 1,
+        "Moderate": 2,
+        "Poor": 3,
+        "Satisfactory": 4,
+        "Severe": 5,
+        "Very Poor": 6
+    }
+    if "AQI_Bucket" in default_df.columns:
+        default_df["AQI_Bucket"] = default_df["AQI_Bucket"].map(bucket_map)
+
     numeric_data = default_df.select_dtypes(include='number')
     default_values = numeric_data.mean().to_dict()
 
-    # Cố định tên feature mà mô hình yêu cầu
     required_features = [
         "City", "Day", "Month", "PM10", "NO2", "NO", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
     ]
