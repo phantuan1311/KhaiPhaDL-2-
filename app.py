@@ -105,37 +105,31 @@ with tabs[1]:
     city_list = list(city_mapping.values())
     city_names = list(city_mapping.keys())
 
-    numeric_data = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
-    default_values = numeric_data.select_dtypes(include='number').mean().to_dict()
+    default_df = data.copy()
+    default_df = default_df.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
+    numeric_data = default_df.select_dtypes(include='number')
+    default_values = numeric_data.mean().to_dict()
 
-    categorical_columns = data.select_dtypes(include='object').columns.difference(["City"])
-    for col in categorical_columns:
-        try:
-            mapping = {val: idx+1 for idx, val in enumerate(data[col].dropna().unique())}
-            data[col + "_num"] = data[col].map(mapping)
-            default_values[col + "_num"] = round(data[col + "_num"].mean())
-        except:
-            pass
-
-    # Danh sách cột mô hình yêu cầu (cố định để tránh lỗi mismatch)
+    # Cố định tên feature mà mô hình yêu cầu
     required_features = [
         "City", "Day", "Month", "PM10", "NO2", "NO", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
     ]
 
     pred_base = []
     for city_id in city_list:
-        row = default_values.copy()
-        row.update({
+        row = {
             "City": city_id,
             "Day": pred_date.day,
             "Month": pred_date.month,
             "PM10": pm10,
-            "NO2": no2
-        })
+            "NO2": no2,
+        }
+        for feat in required_features:
+            if feat not in row:
+                row[feat] = default_values.get(feat, 0)
         pred_base.append(row)
 
-    pred_df_full = pd.DataFrame(pred_base)
-    pred_df = pred_df_full[required_features]
+    pred_df = pd.DataFrame(pred_base)[required_features]
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
@@ -157,16 +151,17 @@ with tabs[1]:
 
     if st.button("🧮 Dự đoán PM2.5 với tham số tùy chọn"):
         try:
-            input_row = default_values.copy()
-            input_row.update({
+            row = {
                 "City": city_mapping[custom_city],
                 "Day": custom_day,
                 "Month": custom_month,
                 "PM10": custom_pm10,
                 "NO2": custom_no2
-            })
-            input_df_full = pd.DataFrame([input_row])
-            input_df = input_df_full[required_features]
+            }
+            for feat in required_features:
+                if feat not in row:
+                    row[feat] = default_values.get(feat, 0)
+            input_df = pd.DataFrame([row])[required_features]
             result = model.predict(input_df.values)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
