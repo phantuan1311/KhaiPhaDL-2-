@@ -96,36 +96,36 @@ with tabs[1]:
     city = st.selectbox("🏩 Chọn thành phố", data["City"].unique())
     pm10_value = st.number_input("🔸 PM10", min_value=0.0, value=100.0)
 
-    # Encode tên thành phố thành số
+    # Thành phố → số
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
+    city_encoded = city_mapping.get(city, 0)
 
-    # Trung bình các cột số để điền vào những biến còn lại
-    avg_dict = data.select_dtypes(include='number').mean().to_dict()
+    # Danh sách feature đúng mà mô hình đã huấn luyện (phải đảm bảo khớp khi train)
+    features = ['City', 'Day', 'Month', 'PM10', 'NO', 'NO2', 'NOx',
+                'NH3', 'CO', 'SO2', 'O3', 'Benzene']
 
-    # Tạo dict đầu vào (chỉ chứa các feature mà model cần)
+    # Tạo dict trung bình cho các feature (chỉ lấy trung bình từ đúng các cột cần)
+    safe_data = data[features].copy()  # tránh lấy nhầm cột string như 'AQI_Bucket'
+    avg_dict = safe_data.mean(numeric_only=True).to_dict()
+
+    # Tạo input đầu vào
     input_dict = {
-        "City": city_mapping.get(city, 0),
-        "Day": pred_date.day,
-        "Month": pred_date.month,
-        "PM10": pm10_value,
-        "NO": avg_dict.get("NO", 0),
-        "NO2": avg_dict.get("NO2", 0),
-        "NOx": avg_dict.get("NOx", 0),
-        "NH3": avg_dict.get("NH3", 0),
-        "CO": avg_dict.get("CO", 0),
-        "SO2": avg_dict.get("SO2", 0),
-        "O3": avg_dict.get("O3", 0),
-        "Benzene": avg_dict.get("Benzene", 0),
-        # ❌ KHÔNG thêm 'Toluene' hoặc 'Xylene' nếu mô hình không cần
+        'City': city_encoded,
+        'Day': pred_date.day,
+        'Month': pred_date.month,
+        'PM10': pm10_value,
+        'NO': avg_dict.get('NO', 0),
+        'NO2': avg_dict.get('NO2', 0),
+        'NOx': avg_dict.get('NOx', 0),
+        'NH3': avg_dict.get('NH3', 0),
+        'CO': avg_dict.get('CO', 0),
+        'SO2': avg_dict.get('SO2', 0),
+        'O3': avg_dict.get('O3', 0),
+        'Benzene': avg_dict.get('Benzene', 0)
     }
 
-    input_df = pd.DataFrame([input_dict])
-
-    # Nếu model hỗ trợ, chỉ giữ đúng cột mà model đã học
-    try:
-        input_df = input_df[model.feature_names_in_]
-    except:
-        pass  # nếu không có feature_names_in_, dùng nguyên input_dict ở trên
+    # Đảm bảo đúng định dạng
+    input_df = pd.DataFrame([input_dict])[features]
 
     st.markdown("📋 Dữ liệu đưa vào mô hình:")
     st.dataframe(input_df)
