@@ -22,7 +22,6 @@ def load_model():
     return joblib.load("model_pm25.pkl")
 
 model = load_model()
-model_features = model.feature_names_in_ if hasattr(model, "feature_names_in_") else []
 
 # === Giao diện ===
 tabs = st.tabs(["📊 Phân tích dữ liệu", "🔮 Dự đoán PM2.5"])
@@ -118,6 +117,11 @@ with tabs[1]:
         except:
             pass
 
+    # Danh sách cột mô hình yêu cầu (cố định để tránh lỗi mismatch)
+    required_features = [
+        "City", "Day", "Month", "PM10", "NO2", "NO", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
+    ]
+
     pred_base = []
     for city_id in city_list:
         row = default_values.copy()
@@ -131,17 +135,11 @@ with tabs[1]:
         pred_base.append(row)
 
     pred_df_full = pd.DataFrame(pred_base)
-    if model_features:
-        missing_features = [f for f in model_features if f not in pred_df_full.columns]
-        for f in missing_features:
-            pred_df_full[f] = 0
-        pred_df = pred_df_full[model_features]
-    else:
-        pred_df = pred_df_full
+    pred_df = pred_df_full[required_features]
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
-            results = model.predict(pred_df)
+            results = model.predict(pred_df.values)
             for city, val in zip(city_names, results):
                 st.success(f"✅ {city}: {round(float(val), 2)} µg/m³")
         except Exception as e:
@@ -168,14 +166,8 @@ with tabs[1]:
                 "NO2": custom_no2
             })
             input_df_full = pd.DataFrame([input_row])
-            if model_features:
-                missing_features = [f for f in model_features if f not in input_df_full.columns]
-                for f in missing_features:
-                    input_df_full[f] = 0
-                input_df = input_df_full[model_features]
-            else:
-                input_df = input_df_full
-            result = model.predict(input_df)
+            input_df = input_df_full[required_features]
+            result = model.predict(input_df.values)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
