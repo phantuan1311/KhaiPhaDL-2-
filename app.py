@@ -72,9 +72,9 @@ with tabs[0]:
 
     fig2, ax2 = plt.subplots(figsize=(12, 5))
     for city in cities:
-        subset = monthly_avg[monthly_avg["City"] == city]
-        ax2.plot(subset["Month"], marker='o', label=city)
-    ax2.set_xticks(subset["Month"][::2])
+        subset = monthly_avg[monthly_avg["City"] == city].reset_index(drop=True)
+        ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
+    ax2.set_xticks(range(0, len(subset), 2))
     ax2.set_xticklabels(subset["Month"][::2], rotation=45)
     ax2.set_ylabel(pollutant)
     ax2.legend()
@@ -103,16 +103,7 @@ with tabs[1]:
     # Trung bình các biến đầu vào
     input_dict = {
         'PM10': round(data['PM10'].mean(), 2),
-        'NO': round(data['NO'].mean(), 2),
-        'NO2': round(data['NO2'].mean(), 2),
-        'NOx': round(data['NOx'].mean(), 2),
-        'NH3': round(data['NH3'].mean(), 2),
-        'CO': round(data['CO'].mean(), 2),
-        'SO2': round(data['SO2'].mean(), 2),
-        'O3': round(data['O3'].mean(), 2),
-        'Benzene': round(data['Benzene'].mean(), 2),
-        'Toluene': round(data['Toluene'].mean(), 2),
-        'Xylene': round(data['Xylene'].mean(), 2)
+        'NO2': round(data['NO2'].mean(), 2)
     }
 
     for feature in input_dict:
