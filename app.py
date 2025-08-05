@@ -22,6 +22,12 @@ def load_model():
     return joblib.load("model_pm25.pkl")
 
 model = load_model()
+st.write("📌 Các cột mô hình yêu cầu:")
+try:
+    st.write(model.feature_names_in_)
+except:
+    st.write("Mô hình không có thuộc tính feature_names_in_")
+
 
 # === Giao diện ===
 tabs = st.tabs(["📊 Phân tích dữ liệu", "🔮 Dự đoán PM2.5"])
@@ -123,12 +129,9 @@ with tabs[1]:
 
     if st.button("🧲 Dự đoán PM2.5"):
         try:
-            st.write("🛠️ Cột dữ liệu đầu vào:")
-            st.write(input_df.dtypes)
-            st.dataframe(input_df)
-
             result = model.predict(input_df)
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
+
 
