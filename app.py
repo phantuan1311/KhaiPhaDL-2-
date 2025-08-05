@@ -109,6 +109,16 @@ with tabs[1]:
     numeric_data = data.drop(columns=["Date", "PM2.5", "AQI", "AQI_Bucket"], errors="ignore")
     default_values = numeric_data.select_dtypes(include='number').mean().to_dict()
 
+    # Với biến hạng mục như AQI_Bucket nếu có thì gán giá trị trung bình đã mã hóa (VD: Good=1,...)
+    categorical_columns = data.select_dtypes(include='object').columns.difference(["City"])
+    for col in categorical_columns:
+        try:
+            mapping = {val: idx+1 for idx, val in enumerate(data[col].dropna().unique())}
+            data[col + "_num"] = data[col].map(mapping)
+            default_values[col + "_num"] = round(data[col + "_num"].mean())
+        except:
+            pass
+
     pred_base = []
     for city_id in city_list:
         row = default_values.copy()
@@ -123,7 +133,7 @@ with tabs[1]:
 
     pred_df = pd.DataFrame(pred_base)
     if model_features:
-        pred_df = pred_df[model_features]
+        pred_df = pred_df[[col for col in model_features if col in pred_df.columns]]
 
     if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
         try:
@@ -155,7 +165,7 @@ with tabs[1]:
             })
             input_df = pd.DataFrame([input_row])
             if model_features:
-                input_df = input_df[model_features]
+                input_df = input_df[[col for col in model_features if col in input_df.columns]]
             result = model.predict(input_df)
             st.success(f"✅ PM2.5 dự đoán: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
