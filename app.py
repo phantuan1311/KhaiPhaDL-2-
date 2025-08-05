@@ -117,8 +117,11 @@ with tab1:
         "PM10": [pm10],
         "NO2": [no2]
     })
-    if "City" in model.feature_names_in_:
-        pred_df_1["City"] = pred_df_1["City"].astype("category").cat.codes
+    # Nếu mô hình yêu cầu mã hóa 'City', bạn nên encode trước khi train
+    # Ở đây ta mặc định encode luôn để phù hợp với model
+    city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
+    pred_df["City"] = pred_df["City"].map(city_mapping)
+
 
     if st.button("🧮 Dự đoán PM2.5 (từ PM10 & NO2)"):
         try:
@@ -161,3 +164,4 @@ with tab2:
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
             st.write("Columns:", pred_df_2.columns.tolist())
+
