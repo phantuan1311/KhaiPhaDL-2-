@@ -1,91 +1,93 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 import joblib
-from datetime import datetime
 
-# --------------------------
-# Tải dữ liệu & mô hình
-# --------------------------
+st.set_page_config(page_title="Phân tích và dự đoán PM2.5", layout="wide")
+
 @st.cache_data
 def load_data():
-    df = pd.read_csv("filtered_city_data.csv")
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    return df
+    return pd.read_csv("filtered_city_data.csv")
 
 @st.cache_resource
 def load_model():
-    return joblib.load("model_pm25.pkl")  # Đổi tên đúng nếu cần
+    return joblib.load("model_pm25.pkl")
 
 df = load_data()
 model = load_model()
 
-# --------------------------
-# Sidebar – Thông tin
-# --------------------------
-st.sidebar.title("📊 Dự đoán PM2.5")
-st.sidebar.write("Nhập các thông số ô nhiễm để dự đoán nồng độ bụi mịn PM2.5 (µg/m³)")
+st.title("🌫️ Ứng dụng phân tích & dự đoán PM2.5")
 
-# --------------------------
-# Nhập đầu vào
-# --------------------------
-with st.sidebar:
-    st.subheader("🔧 Thông số đầu vào")
-    pm10 = st.number_input("PM10", value=100.0)
-    no2 = st.number_input("NO2", value=40.0)
-    no = st.number_input("NO", value=25.0)
-    nox = st.number_input("NOx", value=60.0)
-    nh3 = st.number_input("NH3", value=10.0)
-    co = st.number_input("CO", value=0.9)
-    so2 = st.number_input("SO2", value=20.0)
-    o3 = st.number_input("O3", value=30.0)
-    benzene = st.number_input("Benzene", value=2.0)
-    toluene = st.number_input("Toluene", value=10.0)
-    xylene = st.number_input("Xylene", value=1.5)
-    month = st.selectbox("Tháng", options=list(range(1, 13)), index=datetime.now().month - 1)
+page = st.sidebar.radio("📂 Chọn chức năng", ["📊 Khám phá dữ liệu", "🔮 Dự đoán PM2.5"])
 
-# --------------------------
-# Dự đoán PM2.5
-# --------------------------
-st.header("📈 Dự đoán nồng độ PM2.5")
+if page == "📊 Khám phá dữ liệu":
+    st.header("🔍 Khám phá dữ liệu ô nhiễm không khí")
+    
+    with st.expander("📅 Lọc dữ liệu theo thời gian"):
+        min_date = pd.to_datetime(df["Date"]).min()
+        max_date = pd.to_datetime(df["Date"]).max()
+        start_date, end_date = st.date_input("Chọn khoảng thời gian", [min_date, max_date])
+        df["Date"] = pd.to_datetime(df["Date"])
+        df_filtered = df[(df["Date"] >= pd.to_datetime(start_date)) & (df["Date"] <= pd.to_datetime(end_date))]
 
-# Tạo DataFrame từ input
-input_dict = {
-    "PM10": pm10,
-    "NO2": no2,
-    "NO": no,
-    "NOx": nox,
-    "NH3": nh3,
-    "CO": co,
-    "SO2": so2,
-    "O3": o3,
-    "Benzene": benzene,
-    "Toluene": toluene,
-    "Xylene": xylene,
-    "Month": month
-}
-pred_df = pd.DataFrame([input_dict])
+    with st.expander("🏙️ Lọc theo thành phố"):
+        cities = df["City"].unique().tolist()
+        selected_cities = st.multiselect("Chọn thành phố", cities, default=cities)
+        df_filtered = df_filtered[df_filtered["City"].isin(selected_cities)]
 
-# Ép kiểu số
-for col in pred_df.columns:
-    try:
-        pred_df[col] = pd.to_numeric(pred_df[col])
-    except:
-        st.error(f"❌ Cột {col} không hợp lệ. Vui lòng nhập dạng số.")
-        st.stop()
+    st.write(f"📄 Số dòng dữ liệu: {len(df_filtered)}")
 
-# Hiển thị input
-st.subheader("🔍 Đầu vào cho mô hình:")
-st.dataframe(pred_df)
+    selected_feature = st.selectbox("🧪 Chọn biến cần xem", df.columns[1:-4])
+    fig, ax = plt.subplots()
+    df_filtered.groupby("Date")[selected_feature].mean().plot(ax=ax)
+    ax.set_title(f"Biểu đồ {selected_feature} theo thời gian")
+    ax.set_xlabel("Date")
+    ax.set_ylabel(selected_feature)
+    st.pyplot(fig)
 
-# Kiểm tra kích thước input với mô hình
-st.write("🧪 Số đặc trưng mô hình yêu cầu:", model.n_features_in_)
-st.write("📐 Input shape:", pred_df.shape)
-st.write("📋 Input columns:", pred_df.columns.tolist())
+elif page == "🔮 Dự đoán PM2.5":
+    st.header("🔮 Dự đoán nồng độ bụi mịn PM2.5")
 
-# Dự đoán
-try:
-    result = model.predict(pred_df)
-    st.success(f"✅ Dự đoán PM2.5: {round(result[0], 2)} µg/m³")
-except Exception as e:
-    st.error(f"❌ Lỗi khi dự đoán: {e}")
+    with st.form("prediction_form"):
+        st.subheader("📥 Nhập các giá trị giả định:")
+        col1, col2, col3 = st.columns(3)
 
+        with col1:
+            PM10 = st.number_input("PM10", value=50.0)
+            NO2 = st.number_input("NO2", value=30.0)
+            NO = st.number_input("NO", value=20.0)
+            NOx = st.number_input("NOx", value=40.0)
+
+        with col2:
+            NH3 = st.number_input("NH3", value=10.0)
+            CO = st.number_input("CO", value=0.5)
+            SO2 = st.number_input("SO2", value=15.0)
+            O3 = st.number_input("O3", value=25.0)
+
+        with col3:
+            Benzene = st.number_input("Benzene", value=5.0)
+            Toluene = st.number_input("Toluene", value=5.0)
+            Xylene = st.number_input("Xylene", value=5.0)
+            Month = st.slider("Tháng", 1, 12, 6)
+
+        submitted = st.form_submit_button("Dự đoán")
+
+    if submitted:
+        input_data = {
+            "PM10": PM10, "NO2": NO2, "NO": NO, "NOx": NOx,
+            "NH3": NH3, "CO": CO, "SO2": SO2, "O3": O3,
+            "Benzene": Benzene, "Toluene": Toluene, "Xylene": Xylene,
+            "Month": Month
+        }
+        pred_df = pd.DataFrame([input_data])
+
+        try:
+            result = model.predict(pred_df)[0]
+            st.success(f"✅ Dự đoán PM2.5: **{round(result, 2)} µg/m³**")
+        except Exception as e:
+            st.error(f"❌ Lỗi khi dự đoán: {e}")
+            st.write("📌 Kiểm tra input:")
+            st.write("Số đặc trưng mô hình yêu cầu:", model.n_features_in_)
+            st.write("Input shape:", pred_df.shape)
+            st.write("Input columns:")
+            st.write(pred_df.columns.tolist())
