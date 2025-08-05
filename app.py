@@ -106,7 +106,12 @@ with tabs[1]:
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
-    # Tính trung bình các đặc trưng
+    # Map AQI_Bucket thành số
+    bucket_mapping = {"Good": 1, "Satisfactory": 2, "Moderate": 3, "Poor": 4, "Very Poor": 5, "Severe": 6}
+    data_numeric = data.copy()
+    if "AQI_Bucket" in data_numeric.columns:
+        data_numeric["AQI_Bucket"] = data_numeric["AQI_Bucket"].map(bucket_mapping)
+
     default_inputs = {}
     for feature in all_features:
         if feature == "City":
@@ -115,14 +120,8 @@ with tabs[1]:
             default_inputs[feature] = pred_date.day
         elif feature == "Month":
             default_inputs[feature] = pred_date.month
-        elif feature in data.columns:
-            if pd.api.types.is_numeric_dtype(data[feature]):
-                default_inputs[feature] = round(data[feature].mean(), 2)
-            else:
-                # Chuyển đổi AQI_Bucket sang số (nếu có)
-                mapping = {"Good": 1, "Satisfactory": 2, "Moderate": 3, "Poor": 4, "Very Poor": 5, "Severe": 6}
-                mapped_vals = data[feature].map(mapping)
-                default_inputs[feature] = int(round(mapped_vals.mean())) if mapped_vals.notna().any() else 0
+        elif feature in data_numeric.columns:
+            default_inputs[feature] = round(data_numeric[feature].mean(), 2)
         else:
             default_inputs[feature] = 0
 
