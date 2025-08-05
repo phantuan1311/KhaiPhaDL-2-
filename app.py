@@ -97,35 +97,29 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("🔮 Dự đoán nồng độ PM2.5")
 
-    with st.expander("✏️ Dự đoán đơn giản (PM10, NO2, thành phố, ngày)"):
-        col1, col2 = st.columns(2)
-        with col1:
-            pred_city = st.selectbox("Chọn thành phố", data["City"].unique(), key="city1")
-            pred_date = st.date_input("Chọn ngày", value=date(2020, 1, 1), 
-                                       min_value=data["Date"].min().date(), 
-                                       max_value=data["Date"].max().date(), 
-                                       key="date1")
-        with col2:
-            pm10 = st.number_input("Giá trị PM10", value=100.0, key="pm10")
-            no2 = st.number_input("Giá trị NO2", value=40.0, key="no2")
+    with st.expander("✏️ Dự đoán đơn giản (PM10, NO2, theo từng thành phố)"):
+        pred_date = st.date_input("Chọn ngày", value=date(2020, 1, 1), 
+                                  min_value=data["Date"].min().date(), 
+                                  max_value=data["Date"].max().date(), 
+                                  key="date1")
+        pm10 = st.number_input("Giá trị PM10", value=100.0, key="pm10")
+        no2 = st.number_input("Giá trị NO2", value=40.0, key="no2")
 
-        pred_df_simple = pd.DataFrame({
-            "City": [pred_city],
-            "Day": [pred_date.day],
-            "Month": [pred_date.month],
-            "PM10": [pm10],
-            "NO2": [no2]
+        city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
+
+        pred_all = pd.DataFrame({
+            "City": [city_mapping[city] for city in data["City"].unique()],
+            "Day": [pred_date.day] * len(data["City"].unique()),
+            "Month": [pred_date.month] * len(data["City"].unique()),
+            "PM10": [pm10] * len(data["City"].unique()),
+            "NO2": [no2] * len(data["City"].unique())
         })
 
-        # Encode City nếu cần
-        if "City" in model.feature_names_in_:
-            city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
-            pred_df_simple["City"] = pred_df_simple["City"].map(city_mapping)
-
-        if st.button("🧮 Dự đoán PM2.5 (từ PM10 & NO2)"):
+        if st.button("🧮 Dự đoán PM2.5 cho tất cả thành phố"):
             try:
-                result = model.predict(pred_df_simple)
-                st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
+                results = model.predict(pred_all)
+                for city, val in zip(data["City"].unique(), results):
+                    st.success(f"✅ {city}: {round(val, 2)} µg/m³")
             except Exception as e:
                 st.error(f"❌ Lỗi khi dự đoán: {e}")
 
