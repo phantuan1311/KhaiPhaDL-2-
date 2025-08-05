@@ -132,36 +132,33 @@ with tab1:
             st.write("Columns:", pred_df_1.columns.tolist())
 
 with tab2:
-    st.subheader("🧪 Nhập toàn bộ thông số để dự đoán")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        PM10 = st.number_input("PM10", value=50.0)
-        NO2 = st.number_input("NO2", value=30.0)
-        NO = st.number_input("NO", value=20.0)
-        NOx = st.number_input("NOx", value=40.0)
-    with col2:
-        NH3 = st.number_input("NH3", value=10.0)
-        CO = st.number_input("CO", value=0.5)
-        SO2 = st.number_input("SO2", value=15.0)
-        O3 = st.number_input("O3", value=25.0)
-    with col3:
-        Benzene = st.number_input("Benzene", value=5.0)
-        Toluene = st.number_input("Toluene", value=5.0)
-        Xylene = st.number_input("Xylene", value=5.0)
-        Month = st.slider("Tháng", 1, 12, 6)
+    st.subheader("🔍 Dự đoán PM2.5 (đầy đủ các đặc trưng)")
+    # Khởi tạo input cho toàn bộ đặc trưng
+    input_data = {}
+    columns = ['PM10', 'NO2', 'NO', 'NOx', 'NH3', 'CO', 'SO2', 'O3', 'Benzene', 'Toluene', 'Xylene', 'Month']
+    for col in columns:
+        input_data[col] = st.number_input(f"{col}", value=0.0)
 
-    pred_df_2 = pd.DataFrame([{
-        "PM10": PM10, "NO2": NO2, "NO": NO, "NOx": NOx,
-        "NH3": NH3, "CO": CO, "SO2": SO2, "O3": O3,
-        "Benzene": Benzene, "Toluene": Toluene, "Xylene": Xylene,
-        "Month": Month
-    }])
+    # Tạo dataframe
+    pred_df = pd.DataFrame([input_data])
 
-    if st.button("🧬 Dự đoán PM2.5 (chi tiết)"):
+    # Tạo city mapping và thêm city đã mã hóa
+    city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
+    city = st.selectbox("Chọn thành phố", data["City"].unique())
+    pred_df["City"] = city_mapping[city]
+
+    # Đảm bảo thứ tự cột đúng với khi train model
+    final_cols = ['PM10', 'NO2', 'NO', 'NOx', 'NH3', 'CO', 'SO2', 'O3',
+                  'Benzene', 'Toluene', 'Xylene', 'Month', 'City']
+    pred_df = pred_df[final_cols]
+
+    # Dự đoán
+    if st.button("🧮 Dự đoán PM2.5 (từ toàn bộ đặc trưng)"):
         try:
-            result = model.predict(pred_df_2)
-            st.success(f"✅ PM2.5 ước tính: **{round(result[0], 2)} µg/m³**")
+            result = model.predict(pred_df)
+            st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
-            st.write("Columns:", pred_df_2.columns.tolist())
+
+
 
