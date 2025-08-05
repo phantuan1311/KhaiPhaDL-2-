@@ -120,11 +120,16 @@ pred_df = pd.DataFrame({
     "NO2": [no2]
 })
 
-# Mã hoá City đúng như khi huấn luyện
+# Mã hoá giống khi training
 pred_df["City"] = pred_df["City"].astype("category").cat.codes
+
+# Đảm bảo đúng thứ tự cột như khi training
+pred_df = pred_df[["City", "Day", "Month", "PM10", "NO2"]]
 
 # Dự đoán
 if st.button("🧮 Dự đoán PM2.5"):
+    st.write("Input dùng cho mô hình:")
+    st.dataframe(pred_df)
     result = model.predict(pred_df)
     st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
 
