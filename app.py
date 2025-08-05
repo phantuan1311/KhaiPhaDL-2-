@@ -74,20 +74,25 @@ with tabs[0]:
     st.pyplot(fig1)
 
     st.subheader(f"📊 Trung bình '{pollutant}' theo tháng")
-    filtered["Month"] = filtered["Date"].dt.to_period("M")
+    
+    # Chuyển thành timestamp đầu tháng để dễ sort
+    filtered["Month"] = filtered["Date"].dt.to_period("M").dt.to_timestamp()
     monthly_avg = filtered.groupby(["Month", "City"])[pollutant].mean().reset_index()
-    monthly_avg["Month"] = monthly_avg["Month"].astype(str)
+
 
     fig2, ax2 = plt.subplots(figsize=(12, 5))
     for city in cities:
-        subset = monthly_avg[monthly_avg["City"] == city].reset_index(drop=True)
+        subset = monthly_avg[monthly_avg["City"] == city].sort_values("Month").reset_index(drop=True)
         ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
-        ax2.set_xticks(range(0, len(subset), 2))
-        ax2.set_xticklabels(subset["Month"][::2], rotation=45)
+    
+    # Format trục x là tháng
+    ax2.set_xlabel("Tháng")
     ax2.set_ylabel(pollutant)
     ax2.legend()
     ax2.grid(True)
+    plt.xticks(rotation=45)
     st.pyplot(fig2)
+
 
     st.subheader(f"📦 So sánh phân bố '{pollutant}' giữa các thành phố")
     st.dataframe(filtered.groupby("City")[pollutant].describe().round(2))
@@ -135,6 +140,7 @@ with tabs[1]:
             st.success(f"✅ Dự đoán PM2.5: **{round(float(result[0]), 2)} µg/m³**")
         except Exception as e:
             st.error(f"❌ Lỗi khi dự đoán: {e}")
+
 
 
 
