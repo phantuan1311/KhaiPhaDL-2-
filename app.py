@@ -1,4 +1,4 @@
-import streamlit as st
+""import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import joblib
@@ -74,8 +74,8 @@ with tabs[0]:
     for city in cities:
         subset = monthly_avg[monthly_avg["City"] == city].reset_index(drop=True)
         ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
-    ax2.set_xticks(range(0, len(subset), 2))
-    ax2.set_xticklabels(subset["Month"][::2], rotation=45)
+        ax2.set_xticks(range(0, len(subset), 2))
+        ax2.set_xticklabels(subset["Month"][::2], rotation=45)
     ax2.set_ylabel(pollutant)
     ax2.legend()
     ax2.grid(True)
@@ -114,6 +114,8 @@ with tabs[1]:
         "SO2": avg_dict.get("SO2", 0),
         "O3": avg_dict.get("O3", 0),
         "Benzene": avg_dict.get("Benzene", 0),
+        "Toluene": avg_dict.get("Toluene", 0),
+        "Xylene": avg_dict.get("Xylene", 0),
     }
 
     input_df = pd.DataFrame([input_dict])
