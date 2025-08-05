@@ -86,3 +86,47 @@ if "AQI_Bucket" in filtered.columns:
 
 # Nút tải dữ liệu
 st.download_button("📥 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
+
+
+import joblib
+from datetime import date
+
+# === DỰ ĐOÁN PM2.5 DỰA TRÊN MÔ HÌNH HUẤN LUYỆN ===
+st.header("🔮 Dự đoán nồng độ PM2.5")
+
+# Tải mô hình
+@st.cache_resource
+def load_model():
+    return joblib.load("model_pm25.pkl")  # thay bằng tên file của bạn
+
+model = load_model()
+
+# Input
+col1, col2 = st.columns(2)
+with col1:
+    pred_city = st.selectbox("Chọn thành phố", data["City"].unique())
+    pred_date = st.date_input("Chọn ngày", value=date(2020, 1, 1), min_value=data["Date"].min().date(), max_value=data["Date"].max().date())
+
+with col2:
+    pm10 = st.number_input("Giá trị PM10", value=100.0)
+    no2 = st.number_input("Giá trị NO2", value=40.0)
+
+# Xử lý input
+pred_df = pd.DataFrame({
+    "City": [pred_city],
+    "Day": [pred_date.day],
+    "Month": [pred_date.month],
+    "PM10": [pm10],
+    "NO2": [no2]
+})
+
+# Ánh xạ city nếu mô hình đã encode
+if "City" in model.feature_names_in_:
+    pred_df["City"] = pred_df["City"].astype("category").cat.codes
+
+# Dự đoán
+if st.button("🧮 Dự đoán PM2.5"):
+    result = model.predict(pred_df)
+    st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
+
+
