@@ -73,7 +73,7 @@ with tabs[0]:
     fig2, ax2 = plt.subplots(figsize=(12, 5))
     for city in cities:
         subset = monthly_avg[monthly_avg["City"] == city]
-        ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
+        ax2.plot(subset["Month"], marker='o', label=city)
     ax2.set_xticks(subset["Month"][::2])
     ax2.set_xticklabels(subset["Month"][::2], rotation=45)
     ax2.set_ylabel(pollutant)
@@ -100,22 +100,31 @@ with tabs[1]:
                               max_value=data["Date"].max().date())
     city = st.selectbox("🏙️ Chọn thành phố", data["City"].unique())
 
-    # Trung bình các giá trị còn lại (PM10, NO2)
-    default_pm10 = round(data["PM10"].mean(), 2)
-    default_no2 = round(data["NO2"].mean(), 2)
+    # Trung bình các biến đầu vào
+    input_dict = {
+        'PM10': round(data['PM10'].mean(), 2),
+        'NO': round(data['NO'].mean(), 2),
+        'NO2': round(data['NO2'].mean(), 2),
+        'NOx': round(data['NOx'].mean(), 2),
+        'NH3': round(data['NH3'].mean(), 2),
+        'CO': round(data['CO'].mean(), 2),
+        'SO2': round(data['SO2'].mean(), 2),
+        'O3': round(data['O3'].mean(), 2),
+        'Benzene': round(data['Benzene'].mean(), 2),
+        'Toluene': round(data['Toluene'].mean(), 2),
+        'Xylene': round(data['Xylene'].mean(), 2)
+    }
 
-    pm10 = st.number_input("🔸 Giá trị PM10", value=default_pm10)
-    no2 = st.number_input("🔸 Giá trị NO2", value=default_no2)
+    for feature in input_dict:
+        input_dict[feature] = st.number_input(f"🔸 {feature}", value=input_dict[feature])
 
+    # Thành phố, ngày tháng
     city_mapping = {city: idx for idx, city in enumerate(data["City"].unique())}
+    input_dict['City'] = city_mapping[city]
+    input_dict['Day'] = pred_date.day
+    input_dict['Month'] = pred_date.month
 
-    input_df = pd.DataFrame([{
-        "City": city_mapping[city],
-        "Day": pred_date.day,
-        "Month": pred_date.month,
-        "PM10": pm10,
-        "NO2": no2
-    }])
+    input_df = pd.DataFrame([input_dict])
 
     if st.button("🧮 Dự đoán PM2.5"):
         try:
