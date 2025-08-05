@@ -104,27 +104,33 @@ with tabs[1]:
         "City", "Day", "Month", "PM10", "NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene"
     ]
 
+    city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
+
     # Tính trung bình các đặc trưng
     default_inputs = {}
     for feature in all_features:
-        if feature in data.columns:
+        if feature == "City":
+            default_inputs[feature] = city_mapping.get(city, 0)
+        elif feature == "Day":
+            default_inputs[feature] = pred_date.day
+        elif feature == "Month":
+            default_inputs[feature] = pred_date.month
+        elif feature in data.columns:
             if pd.api.types.is_numeric_dtype(data[feature]):
-                default_inputs[feature] = data[feature].mean()
+                default_inputs[feature] = round(data[feature].mean(), 2)
             else:
-                default_inputs[feature] = 0
+                # Chuyển đổi AQI_Bucket sang số (nếu có)
+                mapping = {"Good": 1, "Satisfactory": 2, "Moderate": 3, "Poor": 4, "Very Poor": 5, "Severe": 6}
+                mapped_vals = data[feature].map(mapping)
+                default_inputs[feature] = int(round(mapped_vals.mean())) if mapped_vals.notna().any() else 0
         else:
             default_inputs[feature] = 0
 
     for feature in all_features:
         if feature not in ["City", "Day", "Month"]:
-            default_inputs[feature] = st.number_input(f"🔸 {feature}", value=round(default_inputs[feature], 2))
+            default_inputs[feature] = st.number_input(f"🔸 {feature}", value=default_inputs[feature])
 
-    city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
-    default_inputs["City"] = city_mapping.get(city, 0)
-    default_inputs["Day"] = pred_date.day
-    default_inputs["Month"] = pred_date.month
-
-    input_df = pd.DataFrame([{f: round(v) if isinstance(v, float) else v for f, v in default_inputs.items()}])
+    input_df = pd.DataFrame([{f: default_inputs[f] for f in all_features}])
 
     if st.button("🧮 Dự đoán PM2.5"):
         try:
