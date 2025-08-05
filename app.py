@@ -1,138 +1,86 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import joblib
 
-st.set_page_config(layout="wide")
-st.title("🌫️ Phân tích chất lượng không khí (Ấn Độ - 2018 đến 2020)")
-
-# Load dữ liệu
+# Load dữ liệu đã lọc
 @st.cache_data
 def load_data():
-    df = pd.read_csv("filtered_city_data.csv")
-    df["Date"] = pd.to_datetime(df["Date"])
-    return df
+    return pd.read_csv("filtered_city_data.csv", parse_dates=["Date"])
 
-data = load_data()
+df = load_data()
 
-# Sidebar: Chọn thành phố, thời gian, biến số
-st.sidebar.header("🎛️ Bộ lọc dữ liệu")
-cities = st.sidebar.multiselect("Chọn thành phố", data["City"].unique(), default=data["City"].unique())
-date_range = st.sidebar.date_input("Khoảng thời gian", [data["Date"].min(), data["Date"].max()])
+# Load mô hình dự đoán
+model = joblib.load("model_pm25.pkl")
 
-# Danh sách biến số loại trừ AQI_Bucket
-numeric_cols = data.select_dtypes(include='number').columns.tolist()
-valid_cols = [col for col in numeric_cols if col not in ['AQI']]  # giữ lại PM2.5, PM10, NO2,...
-pollutant = st.sidebar.selectbox("Chọn biến cần phân tích", options=valid_cols)
+st.title("🌫️ Phân tích và Dự đoán Chất lượng Không khí")
 
-# Lọc dữ liệu
-filtered = data[data["City"].isin(cities)]
-filtered = filtered[(filtered["Date"] >= pd.to_datetime(date_range[0])) & 
-                    (filtered["Date"] <= pd.to_datetime(date_range[1]))]
+# --- Lọc dữ liệu theo thành phố và khoảng thời gian ---
+st.sidebar.header("🔍 Bộ lọc")
 
-# Kiểm tra dữ liệu rỗng
-if filtered.empty:
-    st.warning("⚠️ Không có dữ liệu trong khoảng bạn chọn.")
-    st.stop()
+cities = df["City"].unique().tolist()
+selected_city = st.sidebar.selectbox("Chọn thành phố", cities)
 
-# Thống kê đầu/cuối khoảng
-st.markdown("### 📌 Thống kê giá trị đầu/cuối khoảng thời gian")
-for city in cities:
-    city_data = filtered[filtered["City"] == city].sort_values("Date")
-    if not city_data.empty:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(label=f"{city} - Đầu khoảng", value=round(city_data[pollutant].iloc[0], 2))
-        with col2:
-            st.metric(label=f"{city} - Cuối khoảng", value=round(city_data[pollutant].iloc[-1], 2))
+min_date = df["Date"].min()
+max_date = df["Date"].max()
+date_range = st.sidebar.date_input("Chọn khoảng thời gian", [min_date, max_date])
 
-# Biểu đồ theo thời gian
-st.subheader(f"📈 Biến '{pollutant}' theo thời gian")
-fig1, ax1 = plt.subplots(figsize=(12, 5))
-for city in cities:
-    city_data = filtered[filtered["City"] == city]
-    ax1.plot(city_data["Date"], city_data[pollutant], label=city)
-ax1.set_xlabel("Ngày")
-ax1.set_ylabel(pollutant)
-ax1.legend()
-ax1.grid(True)
-st.pyplot(fig1)
+filtered = df[
+    (df["City"] == selected_city) &
+    (df["Date"] >= pd.to_datetime(date_range[0])) &
+    (df["Date"] <= pd.to_datetime(date_range[1]))
+].copy()
 
-# Trung bình theo tháng
-st.subheader(f"📊 Trung bình '{pollutant}' theo tháng")
-filtered["Month"] = filtered["Date"].dt.to_period("M")
-monthly_avg = filtered.groupby(["Month", "City"])[pollutant].mean().reset_index()
-monthly_avg["Month"] = monthly_avg["Month"].astype(str)
+# --- Hiển thị dữ liệu ---
+st.subheader(f"📊 Dữ liệu chất lượng không khí tại {selected_city}")
+st.write(f"Số dòng dữ liệu: {len(filtered)}")
+st.dataframe(filtered)
 
-fig2, ax2 = plt.subplots(figsize=(12, 5))
-for city in cities:
-    subset = monthly_avg[monthly_avg["City"] == city]
-    ax2.plot(subset["Month"], subset[pollutant], marker='o', label=city)
-ax2.set_xticks(subset["Month"][::2])
-ax2.set_xticklabels(subset["Month"][::2], rotation=45)
-ax2.set_ylabel(pollutant)
-ax2.legend()
-ax2.grid(True)
-st.pyplot(fig2)
+# --- Biểu đồ các biến ô nhiễm ---
+pollutants = ["PM2.5", "PM10", "NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene", "Toluene", "Xylene"]
 
-# So sánh phân bố
-st.subheader(f"📦 So sánh phân bố '{pollutant}' giữa các thành phố")
-st.dataframe(filtered.groupby("City")[pollutant].describe().round(2))
+selected_var = st.selectbox("Chọn biến ô nhiễm để xem biểu đồ", pollutants)
+if selected_var in filtered.columns:
+    fig, ax = plt.subplots()
+    ax.plot(filtered["Date"], filtered[selected_var])
+    ax.set_title(f"{selected_var} tại {selected_city}")
+    ax.set_xlabel("Ngày")
+    ax.set_ylabel(f"{selected_var} (µg/m³)")
+    st.pyplot(fig)
+else:
+    st.warning("Biến này không tồn tại trong dữ liệu!")
 
-# Phân tích AQI_Bucket nếu tồn tại
-if "AQI_Bucket" in filtered.columns:
-    st.subheader("🔍 Tần suất các mức AQI_Bucket")
-    aqi_counts = filtered["AQI_Bucket"].value_counts()
-    st.bar_chart(aqi_counts)
+# --- Dự đoán PM2.5 ---
+st.subheader("🔮 Dự đoán PM2.5")
 
-# Nút tải dữ liệu
-st.download_button("📥 Tải dữ liệu đã lọc", data=filtered.to_csv(index=False), file_name="filtered_air_pollution_data.csv")
-
-
-import joblib
-from datetime import date
-
-# === DỰ ĐOÁN PM2.5 DỰA TRÊN MÔ HÌNH HUẤN LUYỆN ===
-st.header("🔮 Dự đoán nồng độ PM2.5")
-
-# Tải mô hình
-@st.cache_resource
-def load_model():
-    return joblib.load("model_pm25.pkl")  # thay bằng tên file của bạn
-
-model = load_model()
-
-# Input
 col1, col2 = st.columns(2)
 with col1:
-    pred_city = st.selectbox("Chọn thành phố", data["City"].unique())
-    pred_date = st.date_input("Chọn ngày", value=date(2020, 1, 1), min_value=data["Date"].min().date(), max_value=data["Date"].max().date())
-
+    pred_city = st.selectbox("Thành phố", cities, key="pred_city")
+    pred_date = st.date_input("Ngày dự đoán", value=max_date, key="pred_date")
 with col2:
-    pm10 = st.number_input("Giá trị PM10", value=100.0)
-    no2 = st.number_input("Giá trị NO2", value=40.0)
+    pm10 = st.number_input("Giá trị PM10", min_value=0.0, value=100.0)
+    no2 = st.number_input("Giá trị NO2", min_value=0.0, value=30.0)
 
-# Chuẩn bị input
+# Chuẩn bị input cho mô hình
 pred_df = pd.DataFrame({
     "City": [pred_city],
-    "Day": [pred_date.day],
-    "Month": [pred_date.month],
+    "Day": [pd.to_datetime(pred_date).day],
+    "Month": [pd.to_datetime(pred_date).month],
     "PM10": [pm10],
     "NO2": [no2]
 })
-
-# Mã hoá giống khi training
 pred_df["City"] = pred_df["City"].astype("category").cat.codes
-
-# Đảm bảo đúng thứ tự cột như khi training
 pred_df = pred_df[["City", "Day", "Month", "PM10", "NO2"]]
 
-# Dự đoán
+# --- Kiểm tra input và predict ---
 if st.button("🧮 Dự đoán PM2.5"):
-    st.write("Input dùng cho mô hình:")
-    st.dataframe(pred_df)
-    result = model.predict(pred_df)
-    st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
+    st.write("📌 Kiểm tra input cho mô hình:")
+    st.write("Số đặc trưng mô hình yêu cầu:", model.n_features_in_)
+    st.write("Input shape:", pred_df.shape)
+    st.write("Input columns:", pred_df.columns.tolist())
 
-
-
-
+    try:
+        result = model.predict(pred_df)
+        st.success(f"✅ Dự đoán PM2.5: **{round(result[0], 2)} µg/m³**")
+    except Exception as e:
+        st.error(f"❌ Lỗi khi dự đoán: {e}")
