@@ -98,14 +98,24 @@ with tabs[1]:
 
     city_mapping = {c: idx for idx, c in enumerate(data["City"].unique())}
 
-    avg_values = data[["NO", "NO2", "NOx", "NH3", "CO", "SO2", "O3", "Benzene", "Toluene", "Xylene"]].mean().to_dict()
+    # Tạo dict trung bình cho tất cả feature cần thiết (12 features cho LogisticRegression)
+    avg_dict = data.mean(numeric_only=True).to_dict()
 
     input_dict = {
         "City": city_mapping.get(city, 0),
         "Day": pred_date.day,
         "Month": pred_date.month,
         "PM10": pm10_value,
-        **avg_values
+        "NO": avg_dict.get("NO", 0),
+        "NO2": avg_dict.get("NO2", 0),
+        "NOx": avg_dict.get("NOx", 0),
+        "NH3": avg_dict.get("NH3", 0),
+        "CO": avg_dict.get("CO", 0),
+        "SO2": avg_dict.get("SO2", 0),
+        "O3": avg_dict.get("O3", 0),
+        "Benzene": avg_dict.get("Benzene", 0),
+        "Toluene": avg_dict.get("Toluene", 0),
+        "Xylene": avg_dict.get("Xylene", 0),
     }
 
     input_df = pd.DataFrame([input_dict])
